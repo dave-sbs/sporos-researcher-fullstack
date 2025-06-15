@@ -3,26 +3,50 @@ name = "agent"
 version = "0.0.1"
 description = "Backend for the LangGraph agent"
 authors = [
-    { name = "Philipp Schmid", email = "schmidphilipp1995@gmail.com" },
+    { name = "Dave Boku", email = "davesah.bs@gmail.com" },
 ]
 readme = "README.md"
 license = { text = "MIT" }
 requires-python = ">=3.11,<4.0"
 dependencies = [
+    # Core dependencies
     "langgraph>=0.2.6",
     "langchain>=0.3.19",
-    "langchain-google-genai",
-    "python-dotenv>=1.0.1",
+    "langchain-openai>=0.0.5",
+    "langchain-community>=0.0.13",
+    "langchain-core>=0.1.17",
     "langgraph-sdk>=0.1.57",
-    "langgraph-cli",
-    "langgraph-api",
-    "fastapi",
+    "langgraph-cli>=0.1.71",
+    "langgraph-api>=0.2.51",
+    "langchain-google-genai",
     "google-genai",
+    
+    # Database and Vector Store
+    "supabase>=2.3.0",
+    "python-dotenv>=1.0.1",
+    
+    # Web Framework
+    "fastapi>=0.109.0",
+    "starlette>=0.36.0",
+    "uvicorn>=0.27.0",
+    
+    # Data Models and Validation
+    "pydantic>=2.6.0",
+    "typing-extensions>=4.9.0",
+    
+    # Optional but recommended
+    "python-multipart>=0.0.9",
+    "httpx>=0.26.0",
 ]
 
 
 [project.optional-dependencies]
-dev = ["mypy>=1.11.1", "ruff>=0.6.1"]
+dev = [
+    "mypy>=1.11.1",
+    "ruff>=0.6.1",
+    "pytest>=8.3.5",
+    "langgraph-cli[inmem]>=0.1.71",
+]
 
 [build-system]
 requires = ["setuptools>=73.0.0", "wheel"]

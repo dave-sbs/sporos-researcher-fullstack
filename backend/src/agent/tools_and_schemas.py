@@ -1,23 +1,16 @@
-from typing import List
+from typing import List, Optional
 from pydantic import BaseModel, Field
 
 
-class SearchQueryList(BaseModel):
-    query: List[str] = Field(
-        description="A list of search queries to be used for web research."
-    )
-    rationale: str = Field(
-        description="A brief explanation of why these queries are relevant to the research topic."
-    )
+class DocumentGrade(BaseModel):
+    doc_index: int = Field(description="0-based index in original list")
+    is_relevant: bool
+    reasoning: Optional[str] = None
 
 
-class Reflection(BaseModel):
-    is_sufficient: bool = Field(
-        description="Whether the provided summaries are sufficient to answer the user's question."
-    )
-    knowledge_gap: str = Field(
-        description="A description of what information is missing or needs clarification."
-    )
-    follow_up_queries: List[str] = Field(
-        description="A list of follow-up queries to address the knowledge gap."
-    )
+class DocumentGrades(BaseModel):
+    grades: List[DocumentGrade]
+
+class BillSummaryLLM(BaseModel):
+    summary_text: str = Field(description="A full, comprehensive summary of the bill")
+    one_line_summary: str = Field(description="A one-line summary of the bill")

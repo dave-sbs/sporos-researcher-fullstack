@@ -6,91 +6,109 @@ def get_current_date():
     return datetime.now().strftime("%B %d, %Y")
 
 
-query_writer_instructions = """Your goal is to generate sophisticated and diverse web search queries. These queries are intended for an advanced automated web research tool capable of analyzing complex results, following links, and synthesizing information.
+enhance_query_instructions = """Your goal is to reformat the given user query for more effective querying about information found in government legislation documents. Use prior context to better understand the user's intent and conversation history so far.
+ User Query: {user_query}
+ Current Date: {current_date}
 
-Instructions:
-- Always prefer a single search query, only add another query if the original question requests multiple aspects or elements and one query is not enough.
-- Each query should focus on one specific aspect of the original question.
-- Don't produce more than {number_queries} queries.
-- Queries should be diverse, if the topic is broad, generate more than 1 query.
-- Don't generate multiple similar queries, 1 is enough.
-- Query should ensure that the most current information is gathered. The current date is {current_date}.
-
-Format: 
-- Format your response as a JSON object with ALL three of these exact keys:
-   - "rationale": Brief explanation of why these queries are relevant
-   - "query": A list of search queries
-
-Example:
-
-Topic: What revenue grew more last year apple stock or the number of people buying an iphone
-```json
-{{
-    "rationale": "To answer this comparative growth question accurately, we need specific data points on Apple's stock performance and iPhone sales metrics. These queries target the precise financial information needed: company revenue trends, product-specific unit sales figures, and stock price movement over the same fiscal period for direct comparison.",
-    "query": ["Apple total revenue growth fiscal year 2024", "iPhone unit sales growth fiscal year 2024", "Apple stock price growth fiscal year 2024"],
-}}
-```
-
-Context: {research_topic}"""
-
-
-web_searcher_instructions = """Conduct targeted Google Searches to gather the most recent, credible information on "{research_topic}" and synthesize it into a verifiable text artifact.
-
-Instructions:
-- Query should ensure that the most current information is gathered. The current date is {current_date}.
-- Conduct multiple, diverse searches to gather comprehensive information.
-- Consolidate key findings while meticulously tracking the source(s) for each specific piece of information.
-- The output should be a well-written summary or report based on your search findings. 
-- Only include the information found in the search results, don't make up any information.
-
-Research Topic:
-{research_topic}
+ Instructions:
+ 1. Summarize the previous message in 1-2 sentences. Use this as context to better understand the user's intent and conversation history SO FAR.
+ 2. Expand common abbreviations/acronyms (e.g., "AI" to "Artificial Intelligence").
+ 3. Do NOT expand bill IDs (e.g., "H.B. 123") or uncommon acronyms.
+ 4. Maintain original meaning. Add specificity if clearly needed from context.
+ 5. Do NOT add filter-like terms (year, state, bill ID) that are handled separately. Focus on semantically enriching the core query.
+ Return only the reformulated query text.
 """
 
-reflection_instructions = """You are an expert research assistant analyzing summaries about "{research_topic}".
 
-Instructions:
-- Identify knowledge gaps or areas that need deeper exploration and generate a follow-up query. (1 or multiple).
-- If provided summaries are sufficient to answer the user's question, don't generate a follow-up query.
-- If there is a knowledge gap, generate a follow-up query that would help expand your understanding.
-- Focus on technical details, implementation specifics, or emerging trends that weren't fully covered.
+extract_filters_instructions = """
+You specialize in extracting structured filter criteria from user queries related to legislative bills. Your task is to analyze the user's query, understand the context, and group them into the appropriate filter categories. Output your findings in a single, minified JSON object matching the provided schema.
 
-Requirements:
-- Ensure the follow-up query is self-contained and includes necessary context for web search.
+The current date is: {current_date}, and use this to help you with the necessary context depending on how user's query is phrased.
 
-Output Format:
-- Format your response as a JSON object with these exact keys:
-   - "is_sufficient": true or false
-   - "knowledge_gap": Describe what information is missing or needs clarification
-   - "follow_up_queries": Write a specific question to address this gap
+User Query: {user_query}
 
-Example:
-```json
-{{
-    "is_sufficient": true, // or false
-    "knowledge_gap": "The summary lacks information about performance metrics and benchmarks", // "" if is_sufficient is true
-    "follow_up_queries": ["What are typical performance benchmarks and metrics used to evaluate [specific technology]?"] // [] if is_sufficient is true
-}}
-```
+Use these messages to extract the necessary information. To first identify whether previous conversation is relevant to the current query, you can use the following strategy:
 
-Reflect carefully on the Summaries to identify knowledge gaps and produce a follow-up query. Then, produce your output following this JSON format:
 
-Summaries:
-{summaries}
+ 1. If the user is asking about a specific bill, use the bill identifier to identify the bill. Bill Identifiers are usually a combination of some number and a letter, such as H.R. 1 or S. 1. If the user asks for some ACT or some other descriptor then it refers to the title of the bill rather than the id.
+ 2. If the user is asking about a specific state, use the state to identify the bill. If the user is hinting at a nation wide or federal level policy, use the Federal tag as the state.
+ 3. If the user is asking about a specific year, use the year to identify the bill.
+ If a category is not found, it is okay to leave the field blank.
 """
 
-answer_instructions = """Generate a high-quality answer to the user's question based on the provided summaries.
+
+grade_documents_instructions = """
+You are an AI assistant. Your task is to grade a list of retrieved documents based on their relevance to the user's query.
+User Query: {user_query}
+
+
+Retrieved Documents Overview:
+{doc_context} -- this is just a combination of the document title, and a snippet of the retrieved chunk
+
 
 Instructions:
-- The current date is {current_date}.
-- You are the final step of a multi-step research process, don't mention that you are the final step. 
-- You have access to all the information gathered from the previous steps.
-- You have access to the user's question.
-- Generate a high-quality answer to the user's question based on the provided summaries and the user's question.
-- you MUST include all the citations from the summaries in the answer correctly.
+Provide your output as a single JSON object conforming to the DocumentGrades schema, containing a list of grades. Each grade object should specify the 'doc_index', 'is_relevant' (boolean), and optionally 'reasoning'.
+"""
 
-User Context:
-- {research_topic}
 
-Summaries:
-{summaries}"""
+summarize_bills_instructions = """
+You are an expert at reading legislative bills and summarizing them concisely.
+User Query for Context: {user_query}
+
+
+Bill Title: {title}
+Bill Content:
+{truncated_text} -- This is the full text of the bill, limited to 10,000 characters.
+
+
+Instructions:
+1. Read the bill carefully, focusing on aspects relevant to the user's query if possible.
+2. Extract key points, specific clauses, numbers, dates, and quantitative information.
+3. Produce a summary using bullet points for readability.
+4. If specific clauses/sections are highly relevant to the query, include their core meaning or quote very short, critical parts.
+5. Once a full summary has been generated. Condense your knowledge and generate a very short and concise one sentence descriptive summary of the bill.
+
+
+Provide your output as a single JSON object conforming to the BillSummaryLLM schema, with a summary_text and one_line_summary.
+"""
+
+
+compile_final_report_instructions = """
+You are an AI research assistant. Given the user's original query and a set of bill summaries, produce a comprehensive report in Markdown. Follow this structure exactly:
+
+
+# Topic Overview
+Write a 2–3 sentence paragraph that synthesizes the main findings as they relate to the user's query.
+
+
+Based on the what the user's intentions are from the query they provide,
+
+
+If they are curious about a topic, then you can provide a list of key ideas and insights, figures, and actionable recommendations -
+
+
+If they are looking for a bill, then you can provide a list of bills that are relevant to the query.
+
+
+If they are interested in the process of a bill, then you can provide the bill's process based on the information you have from the bill summaries.
+
+
+<Instructions>
+Use clear and concise language, avoid jargon and complex vocabulary.
+Use markdown separators to create clear sections.
+</Instructions>
+
+
+<UserQuery>
+{user_query}
+</UserQuery>
+
+
+<BillSummaries>
+{summaries_context}
+</BillSummaries>
+
+
+Begin your report now, streaming the Markdown output incrementally.
+"""
+

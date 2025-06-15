@@ -1,9 +1,11 @@
 from __future__ import annotations
 
 from dataclasses import dataclass, field
-from typing import TypedDict
+from typing import TypedDict, Optional, List, Tuple
+from pydantic import BaseModel, Field
 
 from langgraph.graph import add_messages
+from langchain_core.documents import Document
 from typing_extensions import Annotated
 
 
@@ -12,39 +14,41 @@ from dataclasses import dataclass, field
 from typing_extensions import Annotated
 
 
-class OverallState(TypedDict):
+class ResearchGraphState(TypedDict, total=False):
     messages: Annotated[list, add_messages]
-    search_query: Annotated[list, operator.add]
-    web_research_result: Annotated[list, operator.add]
-    sources_gathered: Annotated[list, operator.add]
-    initial_search_query_count: int
-    max_research_loops: int
-    research_loop_count: int
-    reasoning_model: str
+    enhanced_query: Optional[str]
+    filters: Optional[FilterResult]
+    retrieved_docs: Optional[List[Tuple[Document, float]]]
+    graded_docs: List[Tuple[Document, float]]
+    reconstructed_bills: Optional[List[ReconstructedBill]]
+    bill_summaries: Annotated[List[BillSummary], operator.add]
+    final_research: Optional[str]
 
+class FilterResult(BaseModel):
+    bill_identifier: Optional[str] = Field(default=None)
+    year: Optional[List[int]] = Field(default=None)
+    state: Optional[str] = Field(default=None)
 
-class ReflectionState(TypedDict):
-    is_sufficient: bool
-    knowledge_gap: str
-    follow_up_queries: Annotated[list, operator.add]
-    research_loop_count: int
-    number_of_ran_queries: int
-
-
-class Query(TypedDict):
-    query: str
-    rationale: str
-
-
-class QueryGenerationState(TypedDict):
-    query_list: list[Query]
-
-
-class WebSearchState(TypedDict):
-    search_query: str
+class ReconstructedBill(TypedDict, total=False):
     id: str
+    bill_identifier: str
+    year: int
+    state: str
+    title: str
+    similarity_score: float
+    status: List[str]
+    full_text: str
 
 
+class BillSummary(TypedDict, total=False):
+    bill_id: str
+    title: str
+    summary_text: str
+    one_line_summary: str
+    error_message: Optional[str]
+
+
+# This was from the original research agent, not sure if it's needed
 @dataclass(kw_only=True)
 class SearchStateOutput:
     running_summary: str = field(default=None)  # Final report

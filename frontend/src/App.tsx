@@ -6,22 +6,15 @@ import { WelcomeScreen } from "@/components/WelcomeScreen";
 import { ChatMessagesView } from "@/components/ChatMessagesView";
 
 export default function App() {
-  const [processedEventsTimeline, setProcessedEventsTimeline] = useState<
-    ProcessedEvent[]
-  >([]);
-  const [historicalActivities, setHistoricalActivities] = useState<
-    Record<string, ProcessedEvent[]>
-  >({});
-  const scrollAreaRef = useRef<HTMLDivElement>(null);
-  const hasFinalizeEventOccurredRef = useRef(false);
+    const [processedEventsTimeline, setProcessedEventsTimeline] = useState<ProcessedEvent[]>([]);
+    const [historicalActivities, setHistoricalActivities] = useState<Record<string, ProcessedEvent[]>>({});
+    const scrollAreaRef = useRef<HTMLDivElement>(null);
+    const hasFinalizeEventOccurredRef = useRef(false);
 
-  const thread = useStream<{
-    messages: Message[];
-    initial_search_query_count: number;
-    max_research_loops: number;
-    reasoning_model: string;
-  }>({
-    apiUrl: import.meta.env.DEV
+    const thread = useStream<{
+        messages: Message[];        
+    }>({
+        apiUrl: import.meta.env.DEV
       ? "http://localhost:2024"
       : "http://localhost:8123",
     assistantId: "agent",
@@ -30,155 +23,156 @@ export default function App() {
       console.log(event);
     },
     onUpdateEvent: (event: any) => {
-      let processedEvent: ProcessedEvent | null = null;
-      if (event.generate_query) {
-        processedEvent = {
-          title: "Generating Search Queries",
-          data: event.generate_query.query_list.join(", "),
-        };
-      } else if (event.web_research) {
-        const sources = event.web_research.sources_gathered || [];
-        const numSources = sources.length;
-        const uniqueLabels = [
-          ...new Set(sources.map((s: any) => s.label).filter(Boolean)),
-        ];
-        const exampleLabels = uniqueLabels.slice(0, 3).join(", ");
-        processedEvent = {
-          title: "Web Research",
-          data: `Gathered ${numSources} sources. Related to: ${
-            exampleLabels || "N/A"
-          }.`,
-        };
-      } else if (event.reflection) {
-        processedEvent = {
-          title: "Reflection",
-          data: event.reflection.is_sufficient
-            ? "Search successful, generating final answer."
-            : `Need more information, searching for ${event.reflection.follow_up_queries.join(
-                ", "
-              )}`,
-        };
-      } else if (event.finalize_answer) {
-        processedEvent = {
-          title: "Finalizing Answer",
-          data: "Composing and presenting the final answer.",
-        };
-        hasFinalizeEventOccurredRef.current = true;
-      }
-      if (processedEvent) {
-        setProcessedEventsTimeline((prevEvents) => [
-          ...prevEvents,
-          processedEvent!,
-        ]);
-      }
-    },
-  });
+        let processedEvent: ProcessedEvent | null = null;
+        if (event.preprocess_input){
+            processedEvent = {
+                title: "Preprocessing",
+                data: "Your query has been refined.",
+            }
+        } else if (event.extract_filters){
+            const filtersExtracted = event.extract_filters.filters || "N/A";
+            const stateFound = filtersExtracted.state || "N/A";
+            const yearFound = filtersExtracted.year || "N/A";
+            const billIdentifierFound = filtersExtracted.bill_identifier || "N/A";
+            const filtersData = [];
+            if (yearFound !== "N/A") filtersData.push(`Year: ${yearFound}`);
+            if (billIdentifierFound !== "N/A") filtersData.push(`Bill: ${billIdentifierFound}`);
+            if (stateFound !== "N/A") filtersData.push(`State: ${stateFound}`);
 
-  useEffect(() => {
-    if (scrollAreaRef.current) {
-      const scrollViewport = scrollAreaRef.current.querySelector(
-        "[data-radix-scroll-area-viewport]"
-      );
-      if (scrollViewport) {
-        scrollViewport.scrollTop = scrollViewport.scrollHeight;
-      }
+            const dataMessage = filtersData.length > 0 
+                ? filtersData.join(", ") 
+                : `${Object.keys(filtersExtracted).length} keywords found`;
+
+            processedEvent = {
+                title: "Filtering",
+                data: dataMessage,
+            }
+        } else if (event.retrieve_documents){
+            const docs = event.retrieve_documents.retrieved_docs || [];
+            const numDocs = docs.length;
+            processedEvent = {
+                title: "Retrieving",
+                data: `${numDocs} documents retrieved`,
+            }
+        } else if (event.grade_documents){
+            const docs = event.grade_documents.grade_details || [];
+            const numDocs = docs.length;
+            processedEvent = {
+                title: "Grading",
+                data: `Found ${numDocs} relevant documents to your query`,
+            }
+        } else if (event.reconstruct_full_text){
+            processedEvent = {
+                title: "Reconstructing",
+                data: "Reconstructing bill..."
+            }
+        } else if (event.summarize_bills){
+            processedEvent = {
+                title: "Summarizing",
+                data: "Summarizing bill..."
+            }
+        } else if (event.compile_final_research){
+            processedEvent = {
+                title: "Finalizing",
+                data: "Composing and presenting the final answer.",
+            };
+            hasFinalizeEventOccurredRef.current = true; // not sure if we want this here because we'll render the result cards afterwards
+        } 
+        if (processedEvent) {
+            setProcessedEventsTimeline((prevEvents) => [
+                ...prevEvents,
+                processedEvent!,
+            ]);
+        }
     }
-  }, [thread.messages]);
+    });
 
-  useEffect(() => {
-    if (
-      hasFinalizeEventOccurredRef.current &&
-      !thread.isLoading &&
-      thread.messages.length > 0
-    ) {
-      const lastMessage = thread.messages[thread.messages.length - 1];
-      if (lastMessage && lastMessage.type === "ai" && lastMessage.id) {
-        setHistoricalActivities((prev) => ({
-          ...prev,
-          [lastMessage.id!]: [...processedEventsTimeline],
-        }));
-      }
-      hasFinalizeEventOccurredRef.current = false;
-    }
-  }, [thread.messages, thread.isLoading, processedEventsTimeline]);
+    // Scroll to bottom of chat when new message is added
+    useEffect(() => {
+        if (scrollAreaRef.current) {
+            const scrollViewport = scrollAreaRef.current.querySelector(
+              "[data-radix-scroll-area-viewport]"
+            );
+            if (scrollViewport) {
+              scrollViewport.scrollTop = scrollViewport.scrollHeight;
+            }
+          }
+        }, [thread.messages]);     
+        
+    // Update historical activities when finalize event occurs. 
+    // TODO: Figure out proper logic for determining the final event
+    useEffect(() => {
+        if (
+            hasFinalizeEventOccurredRef.current &&
+            !thread.isLoading &&
+            thread.messages.length > 0
+        ) {
+            const lastMessage = thread.messages[thread.messages.length - 1];
+            if (lastMessage && lastMessage.type === "ai" && lastMessage.id) {
+                setHistoricalActivities((prev) => ({
+                    ...prev,
+                    [lastMessage.id!]: [...processedEventsTimeline],
+                }));
+            }
+            hasFinalizeEventOccurredRef.current = false;
+        }
+    }, [thread.messages, thread.isLoading, processedEventsTimeline]);
 
-  const handleSubmit = useCallback(
-    (submittedInputValue: string, effort: string, model: string) => {
-      if (!submittedInputValue.trim()) return;
-      setProcessedEventsTimeline([]);
-      hasFinalizeEventOccurredRef.current = false;
+    const handleSubmit = useCallback(
+        (submittedInputValue: string) => {
+            if (!submittedInputValue.trim()) return;
+            setProcessedEventsTimeline([]);
+            hasFinalizeEventOccurredRef.current = false;
 
-      // convert effort to, initial_search_query_count and max_research_loops
-      // low means max 1 loop and 1 query
-      // medium means max 3 loops and 3 queries
-      // high means max 10 loops and 5 queries
-      let initial_search_query_count = 0;
-      let max_research_loops = 0;
-      switch (effort) {
-        case "low":
-          initial_search_query_count = 1;
-          max_research_loops = 1;
-          break;
-        case "medium":
-          initial_search_query_count = 3;
-          max_research_loops = 3;
-          break;
-        case "high":
-          initial_search_query_count = 5;
-          max_research_loops = 10;
-          break;
-      }
-
-      const newMessages: Message[] = [
-        ...(thread.messages || []),
-        {
-          type: "human",
-          content: submittedInputValue,
-          id: Date.now().toString(),
+            const newMessages: Message[] = [
+                ...(thread.messages || []),
+                {
+                    type: "human",
+                    content: submittedInputValue,
+                    id: Date.now().toString(),
+                },
+            ];
+            console.log("newMessages", newMessages);
+            thread.submit({
+                messages: newMessages,
+            });
         },
-      ];
-      thread.submit({
-        messages: newMessages,
-        initial_search_query_count: initial_search_query_count,
-        max_research_loops: max_research_loops,
-        reasoning_model: model,
-      });
-    },
-    [thread]
-  );
+        [thread]
+    );
 
-  const handleCancel = useCallback(() => {
-    thread.stop();
-    window.location.reload();
-  }, [thread]);
+    const handleCancel = useCallback(() => {
+        thread.stop();
+        window.location.reload();
+    }, [thread]);
 
-  return (
-    <div className="flex h-screen bg-neutral-800 text-neutral-100 font-sans antialiased">
-      <main className="flex-1 flex flex-col overflow-hidden max-w-4xl mx-auto w-full">
-        <div
-          className={`flex-1 overflow-y-auto ${
-            thread.messages.length === 0 ? "flex" : ""
-          }`}
-        >
-          {thread.messages.length === 0 ? (
-            <WelcomeScreen
-              handleSubmit={handleSubmit}
-              isLoading={thread.isLoading}
-              onCancel={handleCancel}
-            />
-          ) : (
-            <ChatMessagesView
-              messages={thread.messages}
-              isLoading={thread.isLoading}
-              scrollAreaRef={scrollAreaRef}
-              onSubmit={handleSubmit}
-              onCancel={handleCancel}
-              liveActivityEvents={processedEventsTimeline}
-              historicalActivities={historicalActivities}
-            />
-          )}
+    return (
+        <div className="flex h-screen bg-neutral-800 text-neutral-100 font-sans antialiased">
+          <main className="flex-1 flex flex-col overflow-hidden max-w-4xl mx-auto w-full">
+            <div
+              className={`flex-1 overflow-y-auto ${
+                thread.messages.length === 0 ? "flex" : ""
+              }`}
+            >
+              {thread.messages.length === 0 ? (
+                <WelcomeScreen
+                  handleSubmit={handleSubmit}
+                  isLoading={thread.isLoading}
+                  onCancel={handleCancel}
+                />
+              ) : (
+                <ChatMessagesView
+                  messages={thread.messages}
+                  isLoading={thread.isLoading}
+                  scrollAreaRef={scrollAreaRef}
+                  onSubmit={handleSubmit}
+                  onCancel={handleCancel}
+                  liveActivityEvents={processedEventsTimeline}
+                  historicalActivities={historicalActivities}
+                />
+              )}
+            </div>
+          </main>
         </div>
-      </main>
-    </div>
-  );
+      );
 }
+    
