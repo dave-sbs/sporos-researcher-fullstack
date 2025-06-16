@@ -73,6 +73,7 @@ def retrieve_documents(state: ResearchGraphState, config: RunnableConfig) -> Res
 def grade_documents(state: ResearchGraphState, config: RunnableConfig) -> ResearchGraphState:
     enhanced_query = state["enhanced_query"]
     retrieved_docs = state.get("retrieved_docs", [])
+    # print(f"state: {state}")
     if not retrieved_docs:
         return {"graded_docs": []}
 
@@ -82,15 +83,36 @@ def grade_documents(state: ResearchGraphState, config: RunnableConfig) -> Resear
             f"Index: {idx}\nTitle: {doc.metadata.get('title')}\nSnippet: {doc.page_content[:500]}\nScore: {score:.3f}\n---"
         )
     context = "\n".join(snippets)
+    # print(f"context: {context}")
+
     prompt = grade_documents_instructions.format(
         user_query=enhanced_query,
         doc_context=context,
     )
     grades = get_llm("gpt-4o-mini").with_structured_output(DocumentGrades).invoke([SystemMessage(content=prompt)])
+    # print(f"grades: {grades}")
 
-    index_is_relevant = {g.doc_index for g in grades.grades if g.is_relevant}
-    graded = [t for idx, t in enumerate(retrieved_docs) if idx in index_is_relevant]
-    return {"graded_docs": graded}
+    # Create a list of graded documents with full metadata
+    graded_docs = []
+    # print(f"grades: {grades}")
+    # print(f"grades.grades: {grades.grades}")
+    for grade in grades.grades:
+        print(f"grade: {grade}")
+        print(f"grade.is_relevant: {grade.is_relevant}")
+        if grade.is_relevant:
+            doc, score = retrieved_docs[grade.doc_index]
+            graded_docs.append({
+                "doc": doc,
+                "score": score,
+                "is_relevant": grade.is_relevant,
+                "reasoning": grade.reasoning,
+                "doc_index": grade.doc_index,
+                "title": doc.metadata.get("title", "N/A")
+            })
+    
+    print(f"graded_docs: {graded_docs}")
+
+    return {"graded_docs": graded_docs}
 
 
 # ---------------------------------------------------------------------------
@@ -104,7 +126,8 @@ def reconstruct_full_text(state: ResearchGraphState, config: RunnableConfig) -> 
 
     sb = get_supabase_client()
     bills: List[ReconstructedBill] = []
-    for doc, score in graded_docs:
+    for gd in graded_docs:
+        doc = gd["doc"]
         bill_id = doc.metadata.get("bill_id")
         if not bill_id:
             continue
@@ -117,7 +140,7 @@ def reconstruct_full_text(state: ResearchGraphState, config: RunnableConfig) -> 
                 "year": doc.metadata.get("year", 0),
                 "state": doc.metadata.get("state", "N/A"),
                 "title": doc.metadata.get("title", "N/A"),
-                "similarity_score": score,
+                "similarity_score": gd["score"],
                 "status": doc.metadata.get("status", []),
                 "full_text": full_text,
             }
@@ -178,4 +201,4 @@ def compile_final_research(state: ResearchGraphState, config: RunnableConfig) ->
         summaries_context="\n".join(joined),
     )
     report = get_llm("gpt-4o-mini").invoke([SystemMessage(content=prompt)])
-    return {"final_research": [AIMessage(content=report.content)]}
+    return {"messages": [AIMessage(content=report.content)]}

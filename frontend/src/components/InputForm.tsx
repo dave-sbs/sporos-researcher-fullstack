@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
-import { SquarePen, Send, StopCircle } from "lucide-react";
+import { SquarePen, StopCircle, ArrowUpCircleIcon } from "lucide-react";
 import { Textarea } from "@/components/ui/textarea";
 import React from "react";
 
@@ -44,7 +44,7 @@ export const InputForm: React.FC<InputFormProps> = ({
       className={`flex flex-col gap-2 p-3 `}
     >
         <div
-        className={`flex flex-row items-center justify-between text-white rounded-3xl rounded-bl-sm ${
+        className={`flex flex-row items-center justify-between text-white rounded-full ${
           hasHistory ? "rounded-br-sm" : ""
         } break-words min-h-7 bg-neutral-700 px-4 pt-3 `}
         >
@@ -79,8 +79,7 @@ export const InputForm: React.FC<InputFormProps> = ({
                 } p-2 cursor-pointer rounded-full transition-all duration-200 text-base`}
                 disabled={isSubmitDisabled}
                 >
-                Search
-                <Send className="h-5 w-5" />
+                <ArrowUpCircleIcon className="h-8 w-8" />
                 </Button>
             )}
             </div>

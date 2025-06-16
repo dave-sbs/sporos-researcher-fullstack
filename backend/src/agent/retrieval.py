@@ -22,5 +22,6 @@ def retriever(query: str, k: int = 20, filters: Optional[Dict[str, Any]] = None)
         # Exact-match metadata filtering
         similar = vector_store.similarity_search_with_relevance_scores(query, k, filter=filters)
     else:
+        # No filtering
         similar = vector_store.similarity_search_with_relevance_scores(query, k)
     return similar

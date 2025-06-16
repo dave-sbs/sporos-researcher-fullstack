@@ -4,8 +4,9 @@ from pydantic import BaseModel, Field
 
 class DocumentGrade(BaseModel):
     doc_index: int = Field(description="0-based index in original list")
-    is_relevant: bool
-    reasoning: Optional[str] = None
+    title: str = Field(description="The title of the document")
+    is_relevant: bool = Field(description="Whether the document is relevant to the user's query")
+    reasoning: Optional[str] = Field(description="Optional reasoning for the grade")
 
 
 class DocumentGrades(BaseModel):
