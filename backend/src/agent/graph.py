@@ -71,6 +71,10 @@ def initiate_parallel_grading(state: ResearchGraphState) -> List[Send]:
         }))
     return sends
 
+def set_final_research_started(state: ResearchGraphState) -> ResearchGraphState:
+    """Node to set the final_research_started flag to True before compiling final research."""
+    return {"final_research_started": True}
+
 # ---------------------------------------------------------------------------
 # Graph construction
 # ---------------------------------------------------------------------------
@@ -84,6 +88,7 @@ def _build_graph():
     g.add_node("grade_documents", grade_documents)
     g.add_node("reconstruct_full_text", reconstruct_full_text)
     g.add_node("summarize_bills", summarize_bills)
+    g.add_node("set_final_research_started", set_final_research_started)
     g.add_node("compile_final_research", compile_final_research)
 
     # Linear edges
@@ -102,7 +107,9 @@ def _build_graph():
         "reconstruct_full_text", initiate_parallel_summaries, ["summarize_bills"]
     )
 
-    g.add_edge("summarize_bills", "compile_final_research")
+    # After all summarize_bills complete, set the flag, then compile final research
+    g.add_edge("summarize_bills", "set_final_research_started")
+    g.add_edge("set_final_research_started", "compile_final_research")
     g.set_finish_point("compile_final_research")
 
     return g.compile(name="agent2-research-graph")

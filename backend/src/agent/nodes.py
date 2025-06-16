@@ -163,7 +163,7 @@ def summarize_bills(state: ResearchGraphState, config: RunnableConfig) -> Resear
     summary = llm.invoke([SystemMessage(content=prompt)])
     try:
         summary_text = summary
-        print(summary_text)
+        # print(summary_text)
         
         bill_summary_output: BillSummary = {
             "bill_id": bill["bill_id"],
@@ -189,6 +189,7 @@ def summarize_bills(state: ResearchGraphState, config: RunnableConfig) -> Resear
 # ---------------------------------------------------------------------------
 
 def compile_final_research(state: ResearchGraphState, config: RunnableConfig) -> ResearchGraphState:
+    print(f"state: {state.get('final_research_started')}")
     summaries = state.get("bill_summaries", [])
     if not summaries:
         return {"final_research": "No relevant bill summaries were generated."}
@@ -201,4 +202,5 @@ def compile_final_research(state: ResearchGraphState, config: RunnableConfig) ->
         summaries_context="\n".join(joined),
     )
     report = get_llm("gpt-4o-mini").invoke([SystemMessage(content=prompt)])
+    print(f"report: {report.content}")
     return {"messages": [AIMessage(content=report.content)]}

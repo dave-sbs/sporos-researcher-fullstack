@@ -265,6 +265,7 @@ interface ChatMessagesViewProps {
     onCancel: () => void;
     liveActivityEvents: ProcessedEvent[];
     historicalActivities: Record<string, ProcessedEvent[]>;
+    finalResearchStarted: boolean;
 }
 
 export function ChatMessagesView({
@@ -275,7 +276,9 @@ export function ChatMessagesView({
     onCancel,
     liveActivityEvents,
     historicalActivities,
+    finalResearchStarted,
 }: ChatMessagesViewProps) {
+    console.log('[ChatMessagesView] finalResearchStarted:', finalResearchStarted);
     const [copiedMessageId, setCopiedMessageId] = useState<string | null>(null);
 
     const handleCopy = async (text: string, messageId: string) => {
@@ -288,12 +291,20 @@ export function ChatMessagesView({
         }
     };
 
+    // console.log('[ChatMessagesView] messages:', messages.map(msg => msg.type));
+
+    const filteredMessages = messages.filter(msg =>
+        msg.type === "human" ||
+        (msg.type === "ai" && finalResearchStarted)
+    );
+    // console.log('[ChatMessagesView] filteredMessages:', filteredMessages);
+
     return (
         <div className="flex flex-col h-full">
             <ScrollArea className="flex-grow" ref={scrollAreaRef}>
                 <div className="p-4 md:p-6 space-y-2 max-w-4xl mx-auto pt-16">
-                {messages.map((message, index) => {
-                    const isLast = index === messages.length - 1;
+                {filteredMessages.map((message, index) => {
+                    const isLast = index === filteredMessages.length - 1;
                     return (
                     <div key={message.id || `msg-${index}`} className="space-y-3">
                         <div
@@ -323,27 +334,30 @@ export function ChatMessagesView({
                     );
                 })}
                 {isLoading &&
-                (messages.length === 0 ||
-                messages[messages.length - 1].type === "human") && (
-                <div className="flex items-start gap-3 mt-3">
-                    {" "}
-                    {/* AI message row structure */}
-                    <div className="relative group max-w-[85%] md:max-w-[80%] rounded-xl p-3 shadow-sm break-words bg-neutral-800 text-neutral-100 rounded-bl-none w-full min-h-[56px]">
-                    {liveActivityEvents.length > 0 ? (
-                        <div className="text-xs">
-                        <ActivityTimeline
-                            processedEvents={liveActivityEvents}
-                            isLoading={true}
-                        />
+                (filteredMessages.length === 0 ||
+                filteredMessages[filteredMessages.length - 1].type === "human") && (
+                (() => {
+                    return (
+                        <div className="flex items-start gap-3 mt-3">
+                            {/* AI message row structure */}
+                            <div className="relative group max-w-[85%] md:max-w-[80%] rounded-xl p-3 shadow-sm break-words bg-neutral-800 text-neutral-100 rounded-bl-none w-full min-h-[56px]">
+                            {liveActivityEvents.length > 0 ? (
+                                <div className="text-xs">
+                                <ActivityTimeline
+                                    processedEvents={liveActivityEvents}
+                                    isLoading={true}
+                                />
+                                </div>
+                            ) : (
+                                <div className="flex items-center justify-start h-full">
+                                <Loader2 className="h-5 w-5 animate-spin text-neutral-400 mr-2" />
+                                <span>Processing...</span>
+                                </div>
+                            )}
+                            </div>
                         </div>
-                    ) : (
-                        <div className="flex items-center justify-start h-full">
-                        <Loader2 className="h-5 w-5 animate-spin text-neutral-400 mr-2" />
-                        <span>Processing...</span>
-                        </div>
-                    )}
-                    </div>
-                </div>
+                    );
+                })()
                 )}
                 </div>
             </ScrollArea>
@@ -352,7 +366,7 @@ export function ChatMessagesView({
                 onSubmit={onSubmit}
                 isLoading={isLoading}
                 onCancel={onCancel}
-                hasHistory={messages.length > 0}
+                hasHistory={filteredMessages.length > 0}
             />
         </div>
     );

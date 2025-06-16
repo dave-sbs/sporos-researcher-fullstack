@@ -10,9 +10,11 @@ export default function App() {
     const [historicalActivities, setHistoricalActivities] = useState<Record<string, ProcessedEvent[]>>({});
     const scrollAreaRef = useRef<HTMLDivElement>(null);
     const hasFinalizeEventOccurredRef = useRef(false);
+    const [finalResearchStarted, setFinalResearchStarted] = useState(false);
 
     const thread = useStream<{
-        messages: Message[];        
+        messages: Message[];
+        final_research_started: boolean;
     }>({
         apiUrl: import.meta.env.DEV
       ? "http://localhost:2024"
@@ -20,9 +22,10 @@ export default function App() {
     assistantId: "agent",
     messagesKey: "messages",
     onFinish: (event: any) => {
-      console.log(event);
+      console.log('[App.tsx] onFinish event:', event);
     },
     onUpdateEvent: (event: any) => {
+        console.log('[App.tsx] onUpdateEvent:', event);
         let processedEvent: ProcessedEvent | null = null;
         if (event.preprocess_input){
             processedEvent = {
@@ -55,7 +58,7 @@ export default function App() {
                 data: `${numDocs} documents retrieved`,
             }
         } else if (event.grade_documents){
-            const docs = event.grade_documents.grade_details || [];
+            const docs = event.grade_documents.graded_docs || [];
             const numDocs = docs.length;
             processedEvent = {
                 title: "Grading",
@@ -71,6 +74,9 @@ export default function App() {
                 title: "Summarizing",
                 data: "Summarizing bill..."
             }
+        }  else if (event.set_final_research_started) {
+            setFinalResearchStarted(event.set_final_research_started);
+            console.log('[App.tsx] setFinalResearchStarted:', event.set_final_research_started);
         } else if (event.compile_final_research){
             processedEvent = {
                 title: "Finalizing",
@@ -83,12 +89,14 @@ export default function App() {
                 ...prevEvents,
                 processedEvent!,
             ]);
+            // console.log('[App.tsx] processedEventsTimeline updated:', processedEvent);
         }
     }
     });
 
     // Scroll to bottom of chat when new message is added
     useEffect(() => {
+        // console.log('[App.tsx] thread.messages changed:', thread.messages);
         if (scrollAreaRef.current) {
             const scrollViewport = scrollAreaRef.current.querySelector(
               "[data-radix-scroll-area-viewport]"
@@ -102,6 +110,7 @@ export default function App() {
     // Update historical activities when finalize event occurs. 
     // TODO: Figure out proper logic for determining the final event
     useEffect(() => {
+        // console.log('[App.tsx] processedEventsTimeline changed:', processedEventsTimeline);
         if (
             hasFinalizeEventOccurredRef.current &&
             !thread.isLoading &&
@@ -113,6 +122,7 @@ export default function App() {
                     ...prev,
                     [lastMessage.id!]: [...processedEventsTimeline],
                 }));
+                console.log('[App.tsx] historicalActivities updated:', lastMessage.id, processedEventsTimeline);
             }
             hasFinalizeEventOccurredRef.current = false;
         }
@@ -132,7 +142,7 @@ export default function App() {
                     id: Date.now().toString(),
                 },
             ];
-            console.log("newMessages", newMessages);
+            // console.log("[App.tsx] handleSubmit newMessages", newMessages);
             thread.submit({
                 messages: newMessages,
             });
@@ -141,9 +151,12 @@ export default function App() {
     );
 
     const handleCancel = useCallback(() => {
+        // console.log('[App.tsx] handleCancel called');
         thread.stop();
         window.location.reload();
     }, [thread]);
+
+    console.log('[App.tsx] Rendering ChatMessagesView with finalResearchStarted:', finalResearchStarted);
 
     return (
         <div className="flex h-screen bg-neutral-800 text-neutral-100 font-sans antialiased">
@@ -168,6 +181,7 @@ export default function App() {
                   onCancel={handleCancel}
                   liveActivityEvents={processedEventsTimeline}
                   historicalActivities={historicalActivities}
+                  finalResearchStarted={finalResearchStarted}
                 />
               )}
             </div>

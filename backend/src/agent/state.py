@@ -22,6 +22,7 @@ class ResearchGraphState(TypedDict, total=False):
     graded_docs: List[Tuple[Document, float]]
     reconstructed_bills: Optional[List[ReconstructedBill]]
     bill_summaries: Annotated[List[BillSummary], operator.add]
+    final_research_started: bool
     final_research: Optional[str]
 
 class FilterResult(BaseModel):
