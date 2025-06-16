@@ -12,6 +12,8 @@ import {
   ActivityTimeline,
   ProcessedEvent,
 } from "@/components/ActivityTimeline"; // Assuming ActivityTimeline is in the same dir or adjust path
+import BillSummaryCardList from "@/components/BillSummaryCardList";
+import { BillCardData } from "@/components/BillSummaryCard";
 
 // Markdown component props type from former ReportView
 type MdComponentProps = {
@@ -133,46 +135,6 @@ const mdComponents = {
     ),
 };
 
-interface BillPreview {
-    id: string;
-    title: string;
-    state: string;
-    snippet?: string;
-}
-
-// BillPreviewTable Component
-interface BillPreviewProps {
-    bill: BillPreview[];
-}
-
-const BillPreviewTable: React.FC<BillPreviewProps> = ({ bill }) => {
-    if (!bill || bill.length === 0) {
-        return null;
-    }
-    return (
-        <div className="mt-6 p-4 md:p-6 max-w-4xl mx-auto border-t border-neutral-700">
-            <h4 className="text-md font-semibold mb-3 text-neutral-200">Sources:</h4>
-            <ul className="list-none p-0 space-y-2">
-                {bill.map((bill) => (
-                    <li key={bill.id} className="text-sm">
-                        <div
-                            className="text-blue-400 hover:text-blue-300 hover:underline"
-                        >
-                            {bill.title}    
-                        </div>
-                        {bill.snippet && (
-                            <p className="text-neutral-400 text-xs mt-0.5 italic">
-                                "{bill.snippet}"
-                            </p>
-                        )}
-                    </li>
-                ))}
-            </ul>
-        </div>
-    );
-};
-        
-
 interface HumanMessageBubbleProps {
     message: Message;
     mdComponents: typeof mdComponents;
@@ -266,6 +228,7 @@ interface ChatMessagesViewProps {
     liveActivityEvents: ProcessedEvent[];
     historicalActivities: Record<string, ProcessedEvent[]>;
     finalResearchStarted: boolean;
+    billCardData: BillCardData[];
 }
 
 export function ChatMessagesView({
@@ -277,8 +240,10 @@ export function ChatMessagesView({
     liveActivityEvents,
     historicalActivities,
     finalResearchStarted,
+    billCardData,
 }: ChatMessagesViewProps) {
     console.log('[ChatMessagesView] finalResearchStarted:', finalResearchStarted);
+    console.log('[ChatMessagesView] billCardData:', billCardData);
     const [copiedMessageId, setCopiedMessageId] = useState<string | null>(null);
 
     const handleCopy = async (text: string, messageId: string) => {
@@ -291,13 +256,10 @@ export function ChatMessagesView({
         }
     };
 
-    // console.log('[ChatMessagesView] messages:', messages.map(msg => msg.type));
-
     const filteredMessages = messages.filter(msg =>
         msg.type === "human" ||
         (msg.type === "ai" && finalResearchStarted)
     );
-    // console.log('[ChatMessagesView] filteredMessages:', filteredMessages);
 
     return (
         <div className="flex flex-col h-full">
@@ -333,6 +295,11 @@ export function ChatMessagesView({
                     </div>
                     );
                 })}
+                {billCardData && billCardData.length > 0 && (
+                    <div className="flex items-start gap-3 mt-3">
+                        <BillSummaryCardList bills={billCardData} />
+                    </div>
+                )}
                 {isLoading &&
                 (filteredMessages.length === 0 ||
                 filteredMessages[filteredMessages.length - 1].type === "human") && (
@@ -368,6 +335,7 @@ export function ChatMessagesView({
                 onCancel={onCancel}
                 hasHistory={filteredMessages.length > 0}
             />
+
         </div>
     );
 }

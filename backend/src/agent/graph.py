@@ -18,6 +18,7 @@ from agent.nodes import (
     reconstruct_full_text,
     retrieve_documents,
     summarize_bills,
+    emit_bill_card_data,
 )
 from typing import List
 
@@ -90,6 +91,7 @@ def _build_graph():
     g.add_node("summarize_bills", summarize_bills)
     g.add_node("set_final_research_started", set_final_research_started)
     g.add_node("compile_final_research", compile_final_research)
+    g.add_node("emit_bill_card_data", emit_bill_card_data)
 
     # Linear edges
     g.set_entry_point("preprocess_input")
@@ -110,7 +112,8 @@ def _build_graph():
     # After all summarize_bills complete, set the flag, then compile final research
     g.add_edge("summarize_bills", "set_final_research_started")
     g.add_edge("set_final_research_started", "compile_final_research")
-    g.set_finish_point("compile_final_research")
+    g.add_edge("compile_final_research", "emit_bill_card_data")
+    g.set_finish_point("emit_bill_card_data")
 
     return g.compile(name="agent2-research-graph")
 

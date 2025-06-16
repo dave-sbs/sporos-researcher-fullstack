@@ -44,9 +44,7 @@ export const InputForm: React.FC<InputFormProps> = ({
       className={`flex flex-col gap-2 p-3 `}
     >
         <div
-        className={`flex flex-row items-center justify-between text-white rounded-full ${
-          hasHistory ? "rounded-br-sm" : ""
-        } break-words min-h-7 bg-neutral-700 px-4 pt-3 `}
+        className={`flex flex-row items-center justify-between text-white rounded-full break-words min-h-7 bg-neutral-700 px-4 pt-3 `}
         >
             <Textarea
             value={internalInputValue}
@@ -85,7 +83,7 @@ export const InputForm: React.FC<InputFormProps> = ({
             </div>
             {hasHistory && (
             <Button
-                className="bg-neutral-700 border-neutral-600 text-neutral-300 cursor-pointer rounded-xl rounded-t-sm pl-2 "
+                className="bg-neutral-700 border-neutral-600 text-neutral-300 cursor-pointer rounded-full"
                 variant="default"
                 onClick={() => window.location.reload()}
             >

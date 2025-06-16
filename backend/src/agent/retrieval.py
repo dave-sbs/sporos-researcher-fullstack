@@ -10,7 +10,7 @@ from .configuration import get_vector_store
 
 
 @tool
-def retriever(query: str, k: int = 20, filters: Optional[Dict[str, Any]] = None) -> List[Tuple[Document, float]]:  # noqa: D401,E501
+def retriever(query: str, k: int = 20, filters: Optional[Dict[str, Any]] = None) -> List[Tuple[Document, float]]:
     """Return (doc, score) tuples from Supabase.
 
     `filters` is a simple metadata-equality dict passed straight to

@@ -4,6 +4,7 @@ import { useState, useEffect, useRef, useCallback } from "react";
 import { ProcessedEvent } from "@/components/ActivityTimeline";
 import { WelcomeScreen } from "@/components/WelcomeScreen";
 import { ChatMessagesView } from "@/components/ChatMessagesView";
+import { BillCardData } from "@/components/BillSummaryCard";    
 
 export default function App() {
     const [processedEventsTimeline, setProcessedEventsTimeline] = useState<ProcessedEvent[]>([]);
@@ -11,6 +12,7 @@ export default function App() {
     const scrollAreaRef = useRef<HTMLDivElement>(null);
     const hasFinalizeEventOccurredRef = useRef(false);
     const [finalResearchStarted, setFinalResearchStarted] = useState(false);
+    const [billCardData, setBillCardData] = useState<BillCardData[]>([]);
 
     const thread = useStream<{
         messages: Message[];
@@ -74,14 +76,18 @@ export default function App() {
                 title: "Summarizing",
                 data: "Summarizing bill..."
             }
-        }  else if (event.set_final_research_started) {
+        }  
+        else if (event.set_final_research_started) {
             setFinalResearchStarted(event.set_final_research_started);
-            console.log('[App.tsx] setFinalResearchStarted:', event.set_final_research_started);
         } else if (event.compile_final_research){
             processedEvent = {
                 title: "Finalizing",
                 data: "Composing and presenting the final answer.",
             };
+            // hasFinalizeEventOccurredRef.current = true; // not sure if we want this here because we'll render the result cards afterwards
+        } else if (event.emit_bill_card_data){
+            setBillCardData(event.emit_bill_card_data.bill_card_data);
+            console.log('bill cards have been triggered')
             hasFinalizeEventOccurredRef.current = true; // not sure if we want this here because we'll render the result cards afterwards
         } 
         if (processedEvent) {
@@ -89,14 +95,12 @@ export default function App() {
                 ...prevEvents,
                 processedEvent!,
             ]);
-            // console.log('[App.tsx] processedEventsTimeline updated:', processedEvent);
         }
     }
     });
 
     // Scroll to bottom of chat when new message is added
     useEffect(() => {
-        // console.log('[App.tsx] thread.messages changed:', thread.messages);
         if (scrollAreaRef.current) {
             const scrollViewport = scrollAreaRef.current.querySelector(
               "[data-radix-scroll-area-viewport]"
@@ -182,6 +186,7 @@ export default function App() {
                   liveActivityEvents={processedEventsTimeline}
                   historicalActivities={historicalActivities}
                   finalResearchStarted={finalResearchStarted}
+                  billCardData={billCardData}
                 />
               )}
             </div>

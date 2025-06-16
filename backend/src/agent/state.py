@@ -24,6 +24,7 @@ class ResearchGraphState(TypedDict, total=False):
     bill_summaries: Annotated[List[BillSummary], operator.add]
     final_research_started: bool
     final_research: Optional[str]
+    bill_card_data: Optional[List[BillCardData]]
 
 class FilterResult(BaseModel):
     bill_identifier: Optional[str] = Field(default=None)
@@ -48,8 +49,14 @@ class BillSummary(TypedDict, total=False):
     one_line_summary: str
     error_message: Optional[str]
 
-
-# This was from the original research agent, not sure if it's needed
-@dataclass(kw_only=True)
-class SearchStateOutput:
-    running_summary: str = field(default=None)  # Final report
+class BillCardData(TypedDict, total=False):
+    billId: str
+    billIdentifier: str
+    title: str
+    state: str
+    year: int
+    sessionIdentifier: str
+    fullTextUrl: str
+    fullText: str
+    oneLineSummary: str
+    fullSummaryText: str
